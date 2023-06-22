@@ -1,0 +1,363 @@
+using System;
+using System.IO;
+
+// TODO - Separar classes em arquivos diferentes
+class Celula
+{
+    // TODO criar métodos get and set e qualquer outro método necessário
+    public bool mina;
+    public bool revelado;
+    public int bombasAdjacentes;
+
+    public Celula()
+    {
+        this.mina = false;
+        this.revelado = false;
+        this.bombasAdjacentes = 0;
+    }
+}
+
+class CampoMinado
+{
+    private int linhas;
+    private int colunas;
+    private int qtdMinas;
+
+    private bool jogadorPerdeu;
+    private bool jogadorGanhou;
+
+    public Celula[,] tabuleiro;
+
+    public CampoMinado(int linhas, int colunas, int minas)
+    {
+        this.linhas = linhas;
+        this.colunas = colunas;
+        this.qtdMinas = minas;
+        this.jogadorGanhou = false;
+        this.jogadorPerdeu = false;
+        this.tabuleiro = new Celula[linhas, colunas];
+    }
+
+    // Feito - Danilo
+    public void IniciarJogo()
+    {
+        // Instancia tabuleiro, posiciona Minas e inicia jogadas.
+        for (int linha = 0; linha < this.linhas; linha++)
+        {
+            for (int coluna = 0; coluna < colunas; coluna++)
+            {
+                tabuleiro[linha, coluna] = new Celula();
+            }
+        }
+
+        PosicionarMinas(this.qtdMinas);
+        BombasAdjacentes();
+        ImprimirTabuleiro();
+    }
+
+    // Feito - Danilo 
+    private void PosicionarMinas(int minas)
+    {
+        // Gera minas aleatorias no tabuleiro.
+        Random rd = new Random();
+        int contadorBombas = 0;
+        while (contadorBombas < this.qtdMinas)
+        {
+            int x = rd.Next(this.linhas);
+            int y = rd.Next(this.colunas);
+
+            if (this.tabuleiro[x, y].mina == false)
+            {
+                this.tabuleiro[x, y].mina = true;
+                contadorBombas++;
+            }
+
+        }
+    }
+
+    // TODO - Alan
+    private void BombasAdjacentes()
+    {
+        for (int linha = 0; linha < this.linhas; linha++)
+        {
+            for (int coluna = 0; coluna < this.colunas; coluna++)
+            {
+                if (tabuleiro[linha, coluna].mina)
+                {
+                    continue; // Não é necessário calcular bombas adjacentes para células com minas
+                }
+
+                int bombasAdjacentes = 0;
+
+                // Verificar as células vizinhas em um raio de 1 célula
+                for (int i = -1; i <= 1; i++)
+                {
+                    for (int j = -1; j <= 1; j++)
+                    {
+                        int vizinhaLinha = linha + i;
+                        int vizinhaColuna = coluna + j;
+
+                        // Verificar se a célula vizinha está dentro dos limites do tabuleiro
+                        if (vizinhaLinha >= 0 && vizinhaLinha < this.linhas && vizinhaColuna >= 0 && vizinhaColuna < this.colunas)
+                        {
+                            if (tabuleiro[vizinhaLinha, vizinhaColuna].mina)
+                            {
+                                bombasAdjacentes++;
+                            }
+                        }
+                    }
+                }
+
+                tabuleiro[linha, coluna].bombasAdjacentes = bombasAdjacentes;
+            }
+        }
+    }
+
+
+    // TODO - Luana
+    public void Jogar()
+    {
+        /*  
+          Imprime tabuleiro revelado, pede uma celula para ser aberta,
+          mantem o jogo em Loop até alguma condição de parada do jogo 
+          ser executada: Verificar vitória e verificar Game Over.
+        */
+        int x = 0;
+        int y = 0;
+        while (!FimDeJogo())
+        {
+            Console.Clear();
+            ImprimirTabuleiro();
+
+
+            // Pedir posição a ser revelada para o usuario
+            Console.WriteLine($"Digite o número da linha (1 a {this.linhas}): ");
+            x = int.Parse(Console.ReadLine()) - 1;
+            Console.WriteLine($"Digite o número da coluna (1 a {this.colunas}): ");
+            y = int.Parse(Console.ReadLine()) - 1;
+
+            // Verifica se é game over
+            RevelarCelula(x, y);
+            VerificaMina(x, y);
+            VerificaVitoria();
+            // Verifica se é viória do jogador;
+            // Verifica status do jogo para determinar ou nao o fim do loop
+        }
+        // IF verificando o que ocasionou o fim do jogo
+        // Mensagem de fim de jogo + imprimir 
+
+        if (VerificaMina(x, y))
+        {
+            Console.WriteLine("Você escolheu uma mina! Game Over!!");
+            ImprimirTabuleiro();
+        }
+        else if (VerificaVitoria())
+        {
+            Console.WriteLine("Parabéns!! Você Venceu!!");
+            ImprimirTabuleiro();
+
+        }
+    }
+
+    private bool VerificaMina(int x, int y)
+    {
+        // verificar se x,y é bomba. Se sim = atualiza jogadorPerdeu para true
+        // iterar todas as celulas e revelar todas as bombas do tabuleiro
+        if (this.tabuleiro[x, y].mina)
+        {
+            this.jogadorPerdeu = true;
+            this.jogadorGanhou = false;
+
+            for (int linha = 0; linha < this.linhas; linha++)
+            {
+                for (int coluna = 0; coluna < this.colunas; coluna++)
+                {
+                    if (this.tabuleiro[linha, coluna].mina)
+                    {
+                        this.tabuleiro[linha, coluna].revelado = true;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private bool VerificaVitoria()
+    {
+        // Percorre todas as células do tabuleiro
+        for (int linha = 0; linha < this.linhas; linha++)
+        {
+            for (int coluna = 0; coluna < this.colunas; coluna++)
+            {
+                // Verifica se a célula atual não foi revelada e não é uma mina
+                if (!this.tabuleiro[linha, coluna].revelado && !this.tabuleiro[linha, coluna].mina)
+                {
+                    return false; // Se encontrar uma célula não revelada que não seja uma mina, retorna false
+                }
+            }
+        }
+
+        // Se percorrer todo o tabuleiro e não encontrar nenhuma célula não revelada que não seja uma mina, o jogador venceu
+        this.jogadorPerdeu = false;
+        this.jogadorGanhou = true;
+        return true;
+    }
+
+
+    // feito- Luísa
+    private void RevelarCelula(int x, int y)
+    {
+
+        if (x >= 0 && x < this.linhas && y >= 0 && y < this.colunas && !this.tabuleiro[x, y].revelado)
+        {
+            this.tabuleiro[x, y].revelado = true;
+
+            if (this.tabuleiro[x, y].bombasAdjacentes == 0)
+            {
+                RevelarCelula(x - 1, y - 1);
+                RevelarCelula(x, y - 1);
+                RevelarCelula(x + 1, y - 1);
+
+                RevelarCelula(x - 1, y);
+                RevelarCelula(x + 1, y);
+                RevelarCelula(x - 1, y + 1);
+                RevelarCelula(x, y + 1);
+                RevelarCelula(x + 1, y + 1);
+            }
+        }
+    }
+
+    // feito - Luísa 
+    private bool FimDeJogo()
+    {
+        if (this.jogadorGanhou == true)
+        {
+            return true;
+        }
+        else if (this.jogadorPerdeu == true)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // Feito - Danilo
+    public void ImprimirTabuleiro()
+    {
+        for (int linha = 0; linha < this.linhas; linha++)
+        {
+            for (int coluna = 0; coluna < this.colunas; coluna++)
+            {
+                if (this.tabuleiro[linha, coluna].revelado == true)
+                {
+                    if (this.tabuleiro[linha, coluna].mina == true)
+                    {
+                        // Imprime * se for bomba
+                        Console.Write(" * ");
+                    }
+                    else
+                    {
+                        // Imprime o numero de bombas na vizinhança
+                        Console.Write(" " + this.tabuleiro[linha, coluna].bombasAdjacentes + " ");
+                    }
+                }
+                else
+                {
+                    // Imprime - para casas que não foram reveladas
+                    Console.Write(" - ");
+                }
+            }
+            Console.WriteLine();
+        }
+    }
+
+    //Luana
+    public static CampoMinado LerConfiguracao(string nomeArquivo)
+    {
+        try
+        {
+            string[] linhas = File.ReadAllLines(nomeArquivo);
+            if (linhas.Length >= 3)
+            {
+                int linhasCampo = int.Parse(linhas[0]);
+                int colunasCampo = int.Parse(linhas[1]);
+                int minasCampo = int.Parse(linhas[2]);
+
+
+                Console.WriteLine("Quantidade de linhas: " + linhasCampo);
+                Console.WriteLine("Quantidade de colunas: " + colunasCampo);
+                Console.WriteLine("Quantidade de minas: " + minasCampo);
+
+                Console.Write("Deseja alterar a quantidade de linhas? (S/N): ");
+                string respostaLinhas = Console.ReadLine();
+
+                if (respostaLinhas.ToUpper() == "S")
+                {
+                    Console.Write("Nova quantidade de linhas: ");
+                    linhasCampo = int.Parse(Console.ReadLine());
+                }
+
+                Console.Write("Deseja alterar a quantidade de colunas? (S/N): ");
+                string respostaColunas = Console.ReadLine();
+
+                if (respostaColunas.ToUpper() == "S")
+                {
+                    Console.Write("Nova quantidade de colunas: ");
+                    colunasCampo = int.Parse(Console.ReadLine());
+                }
+
+                Console.Write("Deseja alterar a quantidade de minas? (S/N): ");
+                string respostaMinas = Console.ReadLine();
+
+                if (respostaMinas.ToUpper() == "S")
+                {
+                    Console.Write("Nova quantidade de minas: ");
+                    minasCampo = int.Parse(Console.ReadLine());
+                }
+
+                CampoMinado campoMinado = new CampoMinado(linhasCampo, colunasCampo, minasCampo);
+
+                return campoMinado;
+            }
+            else
+            {
+                Console.WriteLine("Arquivo de configuração inválido.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Erro ao ler o arquivo de configuração: " + ex.Message);
+        }
+
+        return null;
+    }
+}
+
+class Program
+{
+    public static void Main(string[] args)
+    {
+
+        // Feito - Luana
+        //Declarando e chamando arquivo
+        string nomeArquivo = "configuracoes.txt";
+        // int linha = 8;
+        // int coluna = 8;
+        // int minas = 10;
+        CampoMinado campoMinado = CampoMinado.LerConfiguracao(nomeArquivo);
+
+        if (campoMinado != null)
+        {
+            campoMinado.IniciarJogo();
+            campoMinado.Jogar();
+        }
+        else
+        {
+            Console.WriteLine("Não foi possível iniciar o jogo.");
+        }
+    }
+}
